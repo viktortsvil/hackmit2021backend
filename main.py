@@ -241,7 +241,7 @@ def get_all_classes():
             _dict['class_foundational_topics'].append(ftopic['name'])
             lst.append(_dict)
 
-    return Response(json.dumps(lst), content_type="application/json"), 200
+    return Response(json.dumps(lst), content_type="application/json", headers=[('Access-Control-Allow-Origin', '*')]), 200
 
 
 if __name__ == '__main__':
