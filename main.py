@@ -241,8 +241,8 @@ def get_all_classes():
             _dict['class_foundational_topics'].append(ftopic['name'])
             lst.append(_dict)
 
-    return Response(json.dumps(lst), content_type="application/json", headers=[('Access-Control-Allow-Origin', '*')]), 200
-
+    return Response(json.dumps(lst), content_type="application/json",
+                    headers=[('Access-Control-Allow-Origin', '*')]), 200
 
 
 # get a list with the foundational topics of a class based on class id
@@ -376,15 +376,14 @@ def addQuizRow():
         PROPERTY.set_select("class_id", class_id)
         PROPERTY.set_multi_select("student_id", [student])
         PROPERTY.set_number("task_timestamp", int(time.time()))
-        PROPERTY.set_url("task", f"https://georgiestonia.github.io/MiTeaFront/quiz.html?quizid={UNIQUE_QUIZ_ID}&studentid={student}")
+        PROPERTY.set_url("task",
+                         f"https://georgiestonia.github.io/MiTeaFront/quiz.html?quizid={UNIQUE_QUIZ_ID}&studentid={student}")
         PROPERTY.set_multi_select("collaborators", [student])
         P.create_page(database_id=c.todolist_ID, properties=PROPERTY)
 
-
-    return Response(json.dumps(errors.SUCCESS200), content_type="application/json", headers=[('Access-Control-Allow-Origin', '*')]), 200
-
-
-
+    return Response(json.dumps(errors.SUCCESS200), content_type="application/json",
+                    #headers=[('Access-Control-Allow-Origin', '*')]
+                    ), 200
 
 
 if __name__ == '__main__':
