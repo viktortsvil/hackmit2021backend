@@ -382,7 +382,9 @@ def addQuizRow():
         P.create_page(database_id=c.todolist_ID, properties=PROPERTY)
 
     return Response(json.dumps(errors.SUCCESS200), content_type="application/json",
-                    #headers=[('Access-Control-Allow-Origin', '*')]
+                    headers=[('Access-Control-Allow-Origin', '*'),
+                             ('Access-Control-Request-Method', 'POST'),
+                             ('Access-Control-Request-Headers', 'X-PINGOTHER, Content-Type')]
                     ), 200
 
 
