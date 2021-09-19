@@ -354,7 +354,7 @@ def addQuizRow():
     data = json.dumps(newPageData)
     # print(str(uploadData))
 
-    #res = requests.request("POST", createUrl, headers=headers, data=data)
+    res = requests.request("POST", createUrl, headers=headers, data=data)
 
     D = Database(integrations_token=c.token)
     D.find_all_page(database_id=c.classes_ID)
