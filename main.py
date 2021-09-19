@@ -244,5 +244,148 @@ def get_all_classes():
     return Response(json.dumps(lst), content_type="application/json", headers=[('Access-Control-Allow-Origin', '*')]), 200
 
 
+
+# get a list with the foundational topics of a class based on class id
+def getClassTopics(class_id):
+    headers = {
+        "Authorization": "Bearer " + c.token,
+        "Notion-Version": "2021-08-16",
+        "Content-Type": "application/json"
+    }
+    readUrl = f"https://api.notion.com/v1/databases/{c.classes_ID}/query"
+    res = requests.request("POST", readUrl, headers=headers)
+    res = json.loads(res.text)
+
+    class_topics = []
+    for i in range(len(res['results'])):
+        exit = 0
+        if res['results'][i]['properties']['class_id']['title'][0]['text']['content'] == class_id:
+            exit = 1
+            for j in range(len(res['results'][i]['properties']['class_foundational_topics']['multi_select'])):
+                class_topics.append(
+                    res['results'][i]['properties']['class_foundational_topics']['multi_select'][j]['name'])
+        if exit == 1:
+            break
+
+    return class_topics
+
+
+# get a list with the quiz question ids based on the class id and questions/topic
+
+def getTasksList(class_id, questions_per_topic):
+    headers = {
+        "Authorization": "Bearer " + c.token,
+        "Notion-Version": "2021-08-16",
+        "Content-Type": "application/json"
+    }
+
+    readUrl = f"https://api.notion.com/v1/databases/{c.quizquestions_ID}/query"
+    res = requests.request("POST", readUrl, headers=headers)
+    res = json.loads(res.text)
+    class_topics = getClassTopics(class_id)
+    questions = []
+
+    for i in range(len(class_topics)):
+        all_tasks = []
+        for j in range(len(res['results'])):
+            if res['results'][j]['properties']['quiz_question_topics']['select']['name'] == class_topics[i]:
+                all_tasks.append(res['results'][j]['properties']['quiz_question_id']['title'][0]['text']['content'])
+        if questions_per_topic > len(all_tasks):
+            all_tasks = sample(all_tasks, len(all_tasks))
+        else:
+            all_tasks = sample(all_tasks, questions_per_topic)
+        questions.extend(all_tasks)
+    return (questions)
+
+
+# create a row in the Quiz Archive database with the list of the quiz question ids
+@app.route('/create_quiz', methods=['POST'])
+def addQuizRow():
+    def validate(json_array):
+        if not isinstance(json_array.get('class_id', None), str):
+            return False
+        if not isinstance(json_array.get('questions_per_topic', None), int):
+            return False
+        return True
+
+    validated, response = validators.request_validator(request, validate)
+    if not validated:
+        return response
+
+    class_id = request.get_json()['class_id']
+    questions_per_topic = request.get_json()['questions_per_topic']
+
+    headers = {
+        "Authorization": "Bearer " + c.token,
+        "Notion-Version": "2021-08-16",
+        "Content-Type": "application/json"
+    }
+    tasks_list = (getTasksList(class_id, questions_per_topic))
+
+    createUrl = 'https://api.notion.com/v1/pages'
+    UNIQUE_QUIZ_ID = str(int(time.time()))
+    newPageData = {
+        "parent": {"database_id": c.quizarchive_ID},
+        "properties": {
+            "quiz_id": {
+                "title": [
+                    {
+                        "text": {
+                            "content": UNIQUE_QUIZ_ID
+                        }
+                    }
+                ]
+            },
+            "quiz_timestamp": {
+                "number": int(time.time())
+            },
+            "class_id": {
+                "select":
+                    {
+                        "name": class_id
+                    }
+            },
+            "quiz_questions": {
+                "multi_select": [{"name": task} for task in tasks_list]
+            }
+        }
+    }
+
+    data = json.dumps(newPageData)
+    # print(str(uploadData))
+
+    #res = requests.request("POST", createUrl, headers=headers, data=data)
+
+    D = Database(integrations_token=c.token)
+    D.find_all_page(database_id=c.classes_ID)
+    course_name = ""
+    for page in D.result['results']:
+        if (page['properties']['class_id']['title'][0]['plain_text']) == class_id:
+            course_name = (page['properties']['course_name']['select']['name'])
+    D.find_all_page(database_id=c.students_ID)
+    relevant_students = []
+    for student in D.result['results']:
+        course_attending = student['properties']['courses_attending']['multi_select'][0]['name']
+        if course_attending == course_name:
+            relevant_students.append(student['properties']['student_id']['title'][0]['plain_text'])
+
+    P = Page(integrations_token=c.token)
+    for student in relevant_students:
+        PROPERTY = Properties()
+        PROPERTY.set_title("todo_id", f"{int(time.time())}")
+        PROPERTY.set_select("class_id", class_id)
+        PROPERTY.set_multi_select("student_id", [student])
+        PROPERTY.set_number("task_timestamp", int(time.time()))
+        PROPERTY.set_url("task", f"https://georgiestonia.github.io/MiTeaFront/quiz.html?quizid={UNIQUE_QUIZ_ID}&studentid={student}")
+        PROPERTY.set_multi_select("collaborators", [student])
+        P.create_page(database_id=c.todolist_ID, properties=PROPERTY)
+
+
+    return Response(json.dumps(errors.SUCCESS200)), 200
+
+
+
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=8004)
